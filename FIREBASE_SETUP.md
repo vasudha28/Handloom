@@ -326,3 +326,28 @@ For project-specific issues:
 **🎉 Your Firebase authentication is now ready for production!**
 
 Test all authentication flows and verify everything works as expected before deploying to production.
+
+
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyACbFlMDqN9E19eRzo_iq2JfMFW1WBYDP4",
+  authDomain: "handloom-portal-3297e.firebaseapp.com",
+  projectId: "handloom-portal-3297e",
+  storageBucket: "handloom-portal-3297e.firebasestorage.app",
+  messagingSenderId: "773913965948",
+  appId: "1:773913965948:web:aac158d53d6207444020f9",
+  measurementId: "G-RT6VFMY2YW"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
