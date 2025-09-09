@@ -19,7 +19,7 @@ interface RegisterData {
   email: string;
   phone?: string;
   password: string;
-  role: 'customer' | 'b2b_buyer';
+  role: 'customer' | 'b2b_buyer' | 'admin';
   companyName?: string;
   gstNumber?: string;
   accessCode?: string;
@@ -29,13 +29,16 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<{ user: any; profile: UserProfile }>;
   register: (data: RegisterData) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  loginWithFacebook: () => Promise<void>;
+  loginWithGoogle: () => Promise<{ user: any; profile: UserProfile; isNewUser: boolean }>;
+  loginWithFacebook: () => Promise<{ user: any; profile: UserProfile; isNewUser: boolean }>;
   loginWithPhone: (phone: string) => Promise<any>; // Returns confirmation result
   verifyPhoneOTP: (confirmationResult: any, otp: string, userData?: Partial<UserProfile>) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  resendEmailVerification: () => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>;
   initializeRecaptcha: (containerId: string) => any;
 }
 
@@ -96,6 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      const { user: firebaseUser, profile } = await firebaseAuthService.loginWithEmail(email, password);
+      setUser(mapFirebaseUserToUser(profile));
+      return { user: firebaseUser, profile };
+    } catch (error: any) {
+      throw new Error(error.message || 'Login failed');
+    }
+  };
+
   const register = async (data: RegisterData) => {
     try {
       const userData: Partial<UserProfile> = {
@@ -129,10 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user: firebaseUser, profile, isNewUser } = await firebaseAuthService.loginWithGoogle();
       setUser(mapFirebaseUserToUser(profile));
       
-      toast({
-        title: isNewUser ? "Account created!" : "Welcome back!",
-        description: `Signed in with Google as ${profile.fullName}`,
-      });
+      // Return the result so the UI can handle signup vs signin
+      return { user: firebaseUser, profile, isNewUser };
     } catch (error: any) {
       throw new Error(error.message || 'Google login failed');
     }
@@ -143,10 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user: firebaseUser, profile, isNewUser } = await firebaseAuthService.loginWithFacebook();
       setUser(mapFirebaseUserToUser(profile));
       
-      toast({
-        title: isNewUser ? "Account created!" : "Welcome back!",
-        description: `Signed in with Facebook as ${profile.fullName}`,
-      });
+      // Return the result so the UI can handle signup vs signin
+      return { user: firebaseUser, profile, isNewUser };
     } catch (error: any) {
       throw new Error(error.message || 'Facebook login failed');
     }
@@ -197,6 +206,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resendEmailVerification = async () => {
+    try {
+      await firebaseAuthService.resendEmailVerification();
+      toast({
+        title: "Verification email sent!",
+        description: "Check your email for the verification link.",
+      });
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to send verification email');
+    }
+  };
+
   const signOut = async () => {
     try {
       await firebaseAuthService.logout();
@@ -212,17 +233,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const logout = signOut; // Alias for admin components
+
   const value: AuthContextType = {
     user,
     loading,
     login,
+    loginWithEmail,
     register,
     loginWithGoogle,
     loginWithFacebook,
     loginWithPhone,
     verifyPhoneOTP,
     forgotPassword,
+    resendEmailVerification,
     signOut,
+    logout,
     initializeRecaptcha,
   };
 

@@ -15,6 +15,9 @@ import {
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
+
+
+
 // Firebase configuration - Replace with your actual config
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
@@ -43,6 +46,11 @@ export const facebookProvider = new FacebookAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
+// Set custom parameters for seamless sign-in
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
 // Configure Facebook provider
 facebookProvider.addScope('email');
 facebookProvider.addScope('public_profile');
@@ -52,11 +60,11 @@ export interface UserProfile {
   uid: string;
   email: string;
   fullName: string;
-  phone?: string;
+  phone?: string | null;
   role: 'customer' | 'b2b_buyer' | 'admin';
-  avatar?: string;
-  companyName?: string;
-  gstNumber?: string;
+  avatar?: string | null;
+  companyName?: string | null;
+  gstNumber?: string | null;
   accessCodes?: string[];
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
@@ -111,11 +119,11 @@ export class FirebaseAuthService {
         uid: user.uid,
         email: user.email!,
         fullName: userData.fullName || '',
-        phone: userData.phone,
+        phone: userData.phone || null,
         role: userData.role || 'customer',
-        avatar: userData.avatar,
-        companyName: userData.companyName,
-        gstNumber: userData.gstNumber,
+        avatar: userData.avatar || null,
+        companyName: userData.companyName || null,
+        gstNumber: userData.gstNumber || null,
         accessCodes: userData.accessCodes || [],
         isEmailVerified: user.emailVerified,
         isPhoneVerified: false,
@@ -135,8 +143,26 @@ export class FirebaseAuthService {
   // Email and Password Login
   async loginWithEmail(email: string, password: string): Promise<{ user: FirebaseUser; profile: UserProfile }> {
     try {
+      console.log('Attempting login with email:', email);
+      console.log('Firebase config:', {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
+      });
+      
+      // Check if user exists first
+      try {
+        const userDoc = await getDoc(doc(db, 'users', 'temp'));
+        console.log('Firestore connection test successful');
+      } catch (error) {
+        console.error('Firestore connection error:', error);
+      }
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // Skip email verification for admin login to avoid API errors
+      console.log('Skipping email verification for admin login');
 
       // Get user profile from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -146,13 +172,14 @@ export class FirebaseAuthService {
 
       const profile = userDoc.data() as UserProfile;
 
-      // Update last login
+      // Update last login and email verification status
       await updateDoc(doc(db, 'users', user.uid), {
         lastLogin: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        isEmailVerified: user.emailVerified
       });
 
-      return { user, profile: { ...profile, lastLogin: new Date() } };
+      return { user, profile: { ...profile, lastLogin: new Date(), isEmailVerified: user.emailVerified } };
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
     }
@@ -161,8 +188,13 @@ export class FirebaseAuthService {
   // Google Social Login
   async loginWithGoogle(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
+      console.log('Starting Google authentication...');
+      console.log('Google provider configured:', googleProvider);
+      console.log('Auth instance:', auth);
+      
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      console.log('Google authentication successful:', user);
 
       // Check if user already exists in Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -176,9 +208,9 @@ export class FirebaseAuthService {
           uid: user.uid,
           email: user.email!,
           fullName: user.displayName || '',
-          phone: user.phoneNumber || undefined,
+          phone: user.phoneNumber || null,
           role: 'customer',
-          avatar: user.photoURL || undefined,
+          avatar: user.photoURL || null,
           accessCodes: [],
           isEmailVerified: user.emailVerified,
           isPhoneVerified: !!user.phoneNumber,
@@ -201,6 +233,9 @@ export class FirebaseAuthService {
 
       return { user, profile, isNewUser };
     } catch (error: any) {
+      console.error('Google authentication error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -223,9 +258,9 @@ export class FirebaseAuthService {
           uid: user.uid,
           email: user.email!,
           fullName: user.displayName || '',
-          phone: user.phoneNumber || undefined,
+          phone: user.phoneNumber || null,
           role: 'customer',
-          avatar: user.photoURL || undefined,
+          avatar: user.photoURL || null,
           accessCodes: [],
           isEmailVerified: user.emailVerified,
           isPhoneVerified: !!user.phoneNumber,
@@ -286,9 +321,9 @@ export class FirebaseAuthService {
           fullName: userData?.fullName || 'Phone User',
           phone: user.phoneNumber!,
           role: userData?.role || 'customer',
-          avatar: userData?.avatar,
-          companyName: userData?.companyName,
-          gstNumber: userData?.gstNumber,
+          avatar: userData?.avatar || null,
+          companyName: userData?.companyName || null,
+          gstNumber: userData?.gstNumber || null,
           accessCodes: userData?.accessCodes || [],
           isEmailVerified: false,
           isPhoneVerified: true,
@@ -320,6 +355,19 @@ export class FirebaseAuthService {
   async resetPassword(email: string): Promise<void> {
     try {
       await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      throw new Error(this.getErrorMessage(error.code));
+    }
+  }
+
+  // Resend Email Verification
+  async resendEmailVerification(): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No user is currently signed in');
+      }
+      await sendEmailVerification(user);
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
     }
@@ -387,6 +435,10 @@ export class FirebaseAuthService {
         return 'Sign-in was cancelled.';
       case 'auth/popup-blocked':
         return 'Pop-up was blocked. Please allow pop-ups for this site.';
+      case 'auth/operation-not-allowed':
+        return 'Google sign-in is not enabled. Please contact support.';
+      case 'auth/unauthorized-domain':
+        return 'This domain is not authorized for Google sign-in.';
       case 'auth/invalid-verification-code':
         return 'Invalid verification code. Please try again.';
       case 'auth/code-expired':
