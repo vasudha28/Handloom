@@ -59,19 +59,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Firebase auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      console.log('Auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
       try {
         if (firebaseUser) {
           // User is signed in
+          console.log('Firebase user:', firebaseUser);
           const profile = await firebaseAuthService.getUserProfile(firebaseUser.uid);
+          console.log('User profile from Firestore:', profile);
+          
           if (profile) {
-            setUser(mapFirebaseUserToUser(profile));
+            const localUser = mapFirebaseUserToUser(profile);
+            console.log('Setting user state:', localUser);
+            setUser(localUser);
           } else {
+            console.log('Profile not found in Firestore, signing out...');
             // Profile not found, sign out
             await firebaseAuthService.logout();
             setUser(null);
           }
         } else {
           // User is signed out
+          console.log('User signed out, clearing state');
           setUser(null);
         }
       } catch (error) {
@@ -139,12 +147,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
+      console.log('Auth hook: Starting Google login...');
       const { user: firebaseUser, profile, isNewUser } = await firebaseAuthService.loginWithGoogle();
-      setUser(mapFirebaseUserToUser(profile));
+      
+      console.log('Auth hook: Google login successful', { firebaseUser, profile, isNewUser });
+      
+      // Convert Firebase profile to local User format
+      const localUser = mapFirebaseUserToUser(profile);
+      console.log('Auth hook: Setting user state', localUser);
+      
+      setUser(localUser);
       
       // Return the result so the UI can handle signup vs signin
       return { user: firebaseUser, profile, isNewUser };
     } catch (error: any) {
+      console.error('Auth hook: Google login error', error);
       throw new Error(error.message || 'Google login failed');
     }
   };

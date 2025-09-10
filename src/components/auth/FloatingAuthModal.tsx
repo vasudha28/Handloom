@@ -401,7 +401,7 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setLoading(true);
     try {
-      console.log(`Starting ${provider} authentication...`);
+      console.log(`Modal: Starting ${provider} authentication...`);
       
       let result;
       if (provider === 'google') {
@@ -410,33 +410,63 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
         result = await loginWithFacebook();
       }
       
-      console.log(`${provider} authentication result:`, result);
+      console.log(`Modal: ${provider} authentication result:`, result);
+      
+      // Always set success step first
+      setAuthStep('success');
       
       // Check if this was a new user (signup) or existing user (signin)
       if (result && result.isNewUser) {
-        setAuthStep('success');
         toast({
           title: "Account Created Successfully!",
           description: `Welcome to Handloom Portal! You've been signed up with ${provider === 'google' ? 'Google' : 'Facebook'}.`,
         });
       } else {
-        setAuthStep('success');
         toast({
           title: "Welcome Back!",
           description: `Successfully signed in with ${provider === 'google' ? 'Google' : 'Facebook'}.`,
         });
       }
       
+      // Close modal after a short delay
       setTimeout(() => {
+        console.log('Modal: Closing after successful authentication');
         onClose();
-      }, 2000);
+      }, 1500);
+      
     } catch (error: any) {
-      console.error(`${provider} authentication error:`, error);
-      toast({
-        variant: "destructive",
-        title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Authentication Failed`,
-        description: error.message,
-      });
+      console.error(`Modal: ${provider} authentication error:`, error);
+      
+      // Reset to auth step on error
+      setAuthStep('auth');
+      
+      // Show specific error message based on error type
+      let errorMessage = error.message;
+      let shouldShowError = true;
+      
+      // Handle specific error cases
+      if (error.message.includes('cancelled') || error.message.includes('closed by user')) {
+        // User intentionally cancelled - don't show error toast
+        shouldShowError = false;
+        console.log('User cancelled authentication - no error shown');
+      } else if (error.message.includes('popup')) {
+        errorMessage = 'Please allow popups for this site and try again.';
+      } else if (error.message.includes('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message.includes('message port closed')) {
+        // This is the Chrome extension error - usually harmless
+        errorMessage = 'Authentication may still be in progress. Please check if you\'re logged in.';
+        console.log('Chrome extension message port error - usually harmless');
+      }
+      
+      // Only show error toast if it's a real error (not user cancellation)
+      if (shouldShowError) {
+        toast({
+          variant: "destructive",
+          title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Authentication Failed`,
+          description: errorMessage,
+        });
+      }
     } finally {
       setLoading(false);
     }

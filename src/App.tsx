@@ -20,6 +20,33 @@ import SecurityInfo from "./components/auth/SecurityInfo";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 
+// Load debug utilities and extension helpers
+if (import.meta.env.DEV) {
+  import("./utils/debugAuth");
+  import("./utils/testGoogleAuth");
+  
+  // Inform developers about harmless Chrome extension console messages
+  console.log(`
+🔧 Development Mode Active
+
+ℹ️  If you see errors like "The message port closed before a response was received":
+   - These are usually harmless Chrome extension messages
+   - Common sources: AdBlock, React DevTools, Firebase extensions
+   - They don't affect your app functionality
+   - You can safely ignore them if authentication works
+
+🛠️  Debug tools available:
+   - authDebug.runFullDiagnostic() - Full authentication check
+   - testGoogleAuth() - Specific Google authentication test
+   - quickAuthCheck() - Check current Google auth state
+   - authDebug.checkAuthState() - Current auth status
+   - authDebug.watchAuthState() - Monitor auth changes
+  `);
+}
+
+// Load Chrome extension helper (for both dev and production)
+import("./utils/chromeExtensionHelper");
+
 
 const queryClient = new QueryClient();
 

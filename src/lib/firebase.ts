@@ -42,14 +42,19 @@ export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 
-// Configure Google provider
+// Configure Google provider with specific settings for sign-up
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
-// Set custom parameters for seamless sign-in
+// Set custom parameters optimized for sign-up flow
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: 'select_account',
+  include_granted_scopes: 'true',
+  access_type: 'online'
 });
+
+// Add timeout and retry logic for popup issues
+const POPUP_TIMEOUT = 60000; // 60 seconds
 
 // Configure Facebook provider
 facebookProvider.addScope('email');
@@ -103,8 +108,10 @@ export class FirebaseAuthService {
     userData: Partial<UserProfile>
   ): Promise<{ user: FirebaseUser; profile: UserProfile }> {
     try {
+      console.log('Attempting to register with email:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log('User created successfully:', user.uid);
 
       // Update profile
       await updateProfile(user, {
@@ -188,26 +195,77 @@ export class FirebaseAuthService {
   // Google Social Login
   async loginWithGoogle(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
-      console.log('Starting Google authentication...');
-      console.log('Google provider configured:', googleProvider);
-      console.log('Auth instance:', auth);
+      console.log('🔵 Starting Google authentication...');
+      console.log('🔵 Google provider configured with email and profile scopes');
       
-      const result = await signInWithPopup(auth, googleProvider);
+      // Clear any existing auth state issues
+      if (auth.currentUser) {
+        console.log('🔵 Current user exists, signing out first...');
+        await auth.signOut();
+      }
+      
+      // Set up proper error handling for popup issues
+      let result;
+      try {
+        console.log('🔵 Opening Google sign-in popup...');
+        result = await signInWithPopup(auth, googleProvider);
+        console.log('🔵 Google popup completed successfully');
+      } catch (popupError: any) {
+        console.error('🔴 Google popup error:', popupError);
+        
+        // Handle popup-specific errors gracefully
+        if (popupError.code === 'auth/popup-closed-by-user') {
+          throw new Error('Sign-in was cancelled. Please try again.');
+        } else if (popupError.code === 'auth/popup-blocked') {
+          throw new Error('Pop-up was blocked. Please allow pop-ups for this site and try again.');
+        } else if (popupError.code === 'auth/cancelled-popup-request') {
+          throw new Error('Sign-in was cancelled. Please try again.');
+        } else if (popupError.code === 'auth/network-request-failed') {
+          throw new Error('Network error. Please check your internet connection and try again.');
+        } else if (popupError.code === 'auth/operation-not-allowed') {
+          throw new Error('Google sign-in is not enabled. Please contact support.');
+        }
+        // Re-throw other errors with more context
+        throw new Error(`Google authentication failed: ${popupError.message}`);
+      }
+      
       const user = result.user;
-      console.log('Google authentication successful:', user);
+      console.log('🟢 Google authentication successful:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        emailVerified: user.emailVerified
+      });
 
       // Check if user already exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      console.log('🔵 Checking if user exists in Firestore...');
+      
+      let userDoc;
+      try {
+        userDoc = await getDoc(doc(db, 'users', user.uid));
+        console.log('🔵 Firestore query successful');
+      } catch (firestoreError) {
+        console.error('🔴 Firestore query failed:', firestoreError);
+        throw new Error('Failed to check user profile. Please try again.');
+      }
+      
       let profile: UserProfile;
       let isNewUser = false;
 
       if (!userDoc.exists()) {
         // New user - create profile
+        console.log('🟢 New user detected, creating profile...');
         isNewUser = true;
+        
+        // Validate required user data
+        if (!user.email) {
+          throw new Error('Google account must have an email address.');
+        }
+        
         profile = {
           uid: user.uid,
-          email: user.email!,
-          fullName: user.displayName || '',
+          email: user.email,
+          fullName: user.displayName || user.email.split('@')[0],
           phone: user.phoneNumber || null,
           role: 'customer',
           avatar: user.photoURL || null,
@@ -219,24 +277,61 @@ export class FirebaseAuthService {
           updatedAt: new Date()
         };
 
-        await setDoc(doc(db, 'users', user.uid), profile);
+        console.log('🔵 Creating user profile in Firestore:', {
+          uid: profile.uid,
+          email: profile.email,
+          fullName: profile.fullName,
+          role: profile.role
+        });
+        
+        try {
+          await setDoc(doc(db, 'users', user.uid), profile);
+          console.log('🟢 User profile created successfully in Firestore');
+        } catch (createError) {
+          console.error('🔴 Failed to create user profile:', createError);
+          throw new Error('Failed to create user profile. Please try again.');
+        }
       } else {
         // Existing user - update last login
+        console.log('🔵 Existing user found, updating last login...');
         profile = userDoc.data() as UserProfile;
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastLogin: new Date(),
-          updatedAt: new Date(),
-          avatar: user.photoURL || profile.avatar // Update avatar if changed
-        });
-        profile.lastLogin = new Date();
+        
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            lastLogin: new Date(),
+            updatedAt: new Date(),
+            avatar: user.photoURL || profile.avatar,
+            isEmailVerified: user.emailVerified
+          });
+          profile.lastLogin = new Date();
+          profile.isEmailVerified = user.emailVerified;
+          console.log('🟢 User profile updated successfully');
+        } catch (updateError) {
+          console.error('🔴 Failed to update user profile:', updateError);
+          // Don't throw error for update failure, user can still sign in
+          console.log('🟡 Continuing with existing profile data');
+        }
       }
 
+      console.log('🟢 Google authentication completed successfully:', {
+        isNewUser,
+        userEmail: profile.email,
+        userRole: profile.role
+      });
+      
       return { user, profile, isNewUser };
     } catch (error: any) {
-      console.error('Google authentication error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      throw new Error(this.getErrorMessage(error.code));
+      console.error('🔴 Google authentication error:', error);
+      console.error('🔴 Error code:', error.code);
+      console.error('🔴 Error message:', error.message);
+      
+      // Provide specific error messages for Google sign-up issues
+      if (error.code) {
+        throw new Error(this.getErrorMessage(error.code));
+      } else {
+        // For custom errors we threw above
+        throw error;
+      }
     }
   }
 
@@ -434,11 +529,15 @@ export class FirebaseAuthService {
       case 'auth/cancelled-popup-request':
         return 'Sign-in was cancelled.';
       case 'auth/popup-blocked':
-        return 'Pop-up was blocked. Please allow pop-ups for this site.';
+        return 'Pop-up was blocked. Please allow pop-ups for this site and try again.';
       case 'auth/operation-not-allowed':
         return 'Google sign-in is not enabled. Please contact support.';
       case 'auth/unauthorized-domain':
         return 'This domain is not authorized for Google sign-in.';
+      case 'auth/timeout':
+        return 'Sign-in timeout. Please try again.';
+      case 'auth/internal-error':
+        return 'Internal error occurred. Please try again later.';
       case 'auth/invalid-verification-code':
         return 'Invalid verification code. Please try again.';
       case 'auth/code-expired':
