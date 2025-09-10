@@ -19,11 +19,20 @@ import SecurityInfo from "./components/auth/SecurityInfo";
 // Admin imports
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
+import AdminProductsPage from "./pages/admin/Products";
+import AddProductPage from "./pages/admin/AddProductPage";
+import ProductCollectionsPage from "./pages/admin/ProductCollectionsPage";
+import ProductInventoryPage from "./pages/admin/ProductInventoryPage";
+import PurchaseOrdersPage from "./pages/admin/PurchaseOrdersPage";
+import TransfersPage from "./pages/admin/TransfersPage";
+import GiftCardsPage from "./pages/admin/GiftCardsPage";
 
 // Load debug utilities and extension helpers
 if (import.meta.env.DEV) {
   import("./utils/debugAuth");
   import("./utils/testGoogleAuth");
+  import("./utils/setupAdmin");
   
   // Inform developers about harmless Chrome extension console messages
   console.log(`
@@ -39,6 +48,7 @@ if (import.meta.env.DEV) {
    - authDebug.runFullDiagnostic() - Full authentication check
    - testGoogleAuth() - Specific Google authentication test
    - quickAuthCheck() - Check current Google auth state
+   - setupAdmin() - Create admin user for vasudhaoffsetprinters@gmail.com
    - authDebug.checkAuthState() - Current auth status
    - authDebug.watchAuthState() - Monitor auth changes
   `);
@@ -57,10 +67,20 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Admin Routes - Outside of main app layout */}
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/admin" element={<AdminDashboardPage />} />
+           <Routes>
+             {/* Admin Routes - Outside of main app layout */}
+             <Route path="/admin/login" element={<AdminLoginPage />} />
+             <Route path="/admin" element={<AdminDashboardPage />} />
+             <Route path="/admin/orders" element={<AdminOrdersPage />} />
+             
+             {/* Admin Product Routes */}
+             <Route path="/admin/products" element={<AdminProductsPage />} />
+             <Route path="/admin/add-product" element={<AddProductPage />} />
+             <Route path="/admin/products/collections" element={<ProductCollectionsPage />} />
+             <Route path="/admin/products/inventory" element={<ProductInventoryPage />} />
+             <Route path="/admin/products/purchase-orders" element={<PurchaseOrdersPage />} />
+             <Route path="/admin/products/transfers" element={<TransfersPage />} />
+             <Route path="/admin/products/gift-cards" element={<GiftCardsPage />} />
             
             {/* Main App Routes - With AuthGuard and layout */}
             <Route path="/*" element={

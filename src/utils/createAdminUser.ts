@@ -8,8 +8,8 @@ export async function createAdminUser() {
     // Create admin user with email/password
     const adminData = {
       fullName: 'Admin User',
-      email: 'vasudhadonthamsetti@gmail.com',
-      password: 'Admin123!@#',
+      email: 'vasudhaoffsetprinters@gmail.com',
+      password: 'Vasu@123',
       role: 'admin' as const,
       phone: '+1234567890',
       companyName: 'Handloom Portal',
@@ -45,13 +45,13 @@ To create an admin user manually:
 3. Select "B2B Customer" 
 4. Fill in the form with:
    - Full Name: Admin User
-   - Email: vasudhadonthamsetti@gmail.com
+   - Email: vasudhaoffsetprinters@gmail.com
    - Company Name: Handloom Portal
    - GST Number: 22AAAAA0000A1Z5
-   - Password: Admin123!@#
+   - Password: Vasu@123
 5. After registration, go to Firebase Console
 6. Go to Firestore Database
-7. Find the user document with email: vasudhadonthamsetti@gmail.com
+7. Find the user document with email: vasudhaoffsetprinters@gmail.com
 8. Edit the document and change the "role" field from "b2b_buyer" to "admin"
 9. Save the changes
 

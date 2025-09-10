@@ -102,7 +102,7 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
                   {...form.register('email')}
                   id="email"
                   type="email"
-                  placeholder="vasudhadonthamsetti@gmail.com"
+                  placeholder="vasudhaoffsetprinters@gmail.com"
                   className="pl-10"
                 />
               </div>

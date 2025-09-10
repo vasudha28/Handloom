@@ -150,34 +150,32 @@ export class FirebaseAuthService {
   // Email and Password Login
   async loginWithEmail(email: string, password: string): Promise<{ user: FirebaseUser; profile: UserProfile }> {
     try {
-      console.log('Attempting login with email:', email);
-      console.log('Firebase config:', {
+      console.log('🔵 Attempting login with email:', email);
+      console.log('🔵 Firebase config:', {
         apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
         authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
         projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
       });
       
-      // Check if user exists first
-      try {
-        const userDoc = await getDoc(doc(db, 'users', 'temp'));
-        console.log('Firestore connection test successful');
-      } catch (error) {
-        console.error('Firestore connection error:', error);
-      }
-      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Skip email verification for admin login to avoid API errors
-      console.log('Skipping email verification for admin login');
+      console.log('🟢 Firebase authentication successful for:', user.email);
 
       // Get user profile from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
-        throw new Error('User profile not found');
+        console.error('🔴 User profile not found in Firestore for:', user.uid);
+        throw new Error('User profile not found. Please contact administrator.');
       }
 
       const profile = userDoc.data() as UserProfile;
+      console.log('🔵 User profile found:', { email: profile.email, role: profile.role });
+
+      // For admin users, allow login regardless of email verification status
+      const isAdmin = profile.role === 'admin';
+      if (isAdmin) {
+        console.log('🟡 Admin user detected - bypassing email verification requirement');
+      }
 
       // Update last login and email verification status
       await updateDoc(doc(db, 'users', user.uid), {
@@ -186,8 +184,16 @@ export class FirebaseAuthService {
         isEmailVerified: user.emailVerified
       });
 
-      return { user, profile: { ...profile, lastLogin: new Date(), isEmailVerified: user.emailVerified } };
+      const updatedProfile = { 
+        ...profile, 
+        lastLogin: new Date(), 
+        isEmailVerified: user.emailVerified 
+      };
+
+      console.log('🟢 Login successful for:', user.email, 'Role:', profile.role);
+      return { user, profile: updatedProfile };
     } catch (error: any) {
+      console.error('🔴 Login error:', error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }

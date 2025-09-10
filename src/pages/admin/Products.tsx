@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Edit, Trash2, Eye, Package } from "lucide-react";
 
 interface Product {
@@ -20,84 +19,51 @@ interface Product {
 }
 
 export default function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const { toast } = useToast();
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch products",
-      });
-    } finally {
-      setLoading(false);
+  // Mock data for demonstration - replace with actual Firebase/API call
+  const products: Product[] = [
+    {
+      id: "1",
+      name: "Handwoven Cotton Saree",
+      category: "Sarees",
+      price: 2500,
+      stock_quantity: 15,
+      images: ["/api/placeholder/400/400"],
+      is_active: true,
+      created_at: "2024-01-10T00:00:00Z"
+    },
+    {
+      id: "2",
+      name: "Silk Dupatta",
+      category: "Dupattas",
+      price: 1200,
+      stock_quantity: 8,
+      images: ["/api/placeholder/400/400"],
+      is_active: true,
+      created_at: "2024-01-09T00:00:00Z"
+    },
+    {
+      id: "3",
+      name: "Block Print Kurta",
+      category: "Kurtas",
+      price: 1800,
+      stock_quantity: 0,
+      images: ["/api/placeholder/400/400"],
+      is_active: false,
+      created_at: "2024-01-08T00:00:00Z"
     }
-  };
+  ];
 
   const toggleProductStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProducts(products.map(p => 
-        p.id === id ? { ...p, is_active: !currentStatus } : p
-      ));
-
-      toast({
-        title: "Success",
-        description: `Product ${!currentStatus ? 'activated' : 'deactivated'}`,
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
-    }
+    // TODO: Implement with Firebase/API
+    console.log(`Toggle product ${id} from ${currentStatus} to ${!currentStatus}`);
   };
 
   const deleteProduct = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
-
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProducts(products.filter(p => p.id !== id));
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
-    }
+    // TODO: Implement with Firebase/API
+    console.log(`Delete product ${id}`);
   };
 
   const filteredProducts = products.filter(product =>
@@ -105,23 +71,9 @@ export default function AdminProducts() {
     product.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-64 bg-muted rounded-lg"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Product Management</h1>
         <Link to="/admin/add-product">
@@ -233,6 +185,7 @@ export default function AdminProducts() {
           </Link>
         </div>
       )}
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
