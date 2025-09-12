@@ -13,8 +13,8 @@ import womenImage3 from "@/assets/scrolling-images/women/K2.webp";
 import womenImage4 from "@/assets/scrolling-images/women/k3.webp";
 import womenImage5 from "@/assets/scrolling-images/women/k4.webp";
 import womenImage6 from "@/assets/scrolling-images/women/k5.webp";
-import menImage1 from "@/assets/scrolling-images/men/K3.webp";
-import menImage2 from "@/assets/scrolling-images/men/K1.webp";
+import menImage1 from "@/assets/scrolling-images/men/K3.jpg";
+import menImage2 from "@/assets/scrolling-images/men/k1.jpg";
 
 const ScrollingSarees = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -213,8 +213,7 @@ const ScrollingSarees = () => {
             className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
             style={{
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitScrollbar: { display: 'none' }
+              msOverflowStyle: 'none'
             }}
           >
             {sarees.map((saree) => (
@@ -306,7 +305,7 @@ const ScrollingSarees = () => {
       </div>
 
       {/* CSS for hiding scrollbar */}
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
