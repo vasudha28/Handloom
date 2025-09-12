@@ -11,8 +11,8 @@ import womenImage4 from "@/assets/scrolling-images/women/k3.webp";
 import womenImage5 from "@/assets/scrolling-images/women/k4.webp";
 import womenImage6 from "@/assets/scrolling-images/women/k5.webp";
 
-import menImage1 from "@/assets/scrolling-images/men/K3.webp";
-import menImage2 from "@/assets/scrolling-images/men/K1.webp";
+import menImage1 from "@/assets/scrolling-images/men/K3.jpg";
+import menImage2 from "@/assets/scrolling-images/men/K1.jpg";
 import menImage3 from "@/assets/scrolling-images/men/K5.jpg";
 import menImage4 from "@/assets/scrolling-images/men/K2.jpg";
 
