@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     sourcemap: false, // Disable source maps to avoid Firebase source map issues
     target: 'es2015',
-    minify: 'terser',
+    minify: true, // Use default esbuild minifier
     rollupOptions: {
       output: {
         manualChunks: {
