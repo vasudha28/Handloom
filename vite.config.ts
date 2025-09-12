@@ -24,23 +24,16 @@ export default defineConfig(({ mode }) => ({
   build: {
     sourcemap: false, // Disable source maps to avoid Firebase source map issues
     target: 'es2015',
-    minify: true,
+    minify: 'terser',
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          // Group React packages together and load them first
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react-vendor';
-          }
-          if (id.includes('firebase')) {
-            return 'firebase';
-          }
-          if (id.includes('@radix-ui')) {
-            return 'ui';
-          }
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
+        manualChunks: {
+          // Ensure React is bundled as a single chunk
+          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime'],
+          'react-router': ['react-router-dom'],
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          'ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+          'vendor': ['zod', 'clsx', 'tailwind-merge']
         },
       },
     },
@@ -48,7 +41,14 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     exclude: ['firebase'], // Exclude Firebase from pre-bundling to avoid source map issues
-    include: ['react', 'react-dom', 'react-router-dom', 'react/jsx-runtime'],
+    include: [
+      'react', 
+      'react-dom', 
+      'react/jsx-runtime',
+      'react-router-dom',
+      'react-hook-form',
+      '@hookform/resolvers'
+    ],
     force: true
   },
   esbuild: {
@@ -62,6 +62,8 @@ export default defineConfig(({ mode }) => ({
     global: 'globalThis',
     // Ensure React is available globally
     __DEV__: mode === 'development',
+    // Ensure React is properly defined
+    'React': 'react',
   },
   // Suppress source map warnings in console
   logLevel: 'info',
