@@ -13,17 +13,9 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '5T935CFBZojHBRvL
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Middleware - Allow all origins for now to fix CORS issue
 app.use(cors({
-  origin: [
-    'http://localhost:8080', 
-    'http://localhost:3000', 
-    'https://handloom1.vercel.app', // Your deployed frontend URL
-    'https://handloom1.vercel.app/', // With trailing slash
-    'https://www.handloom1.vercel.app', // With www
-    'https://www.handloom1.vercel.app/', // With www and trailing slash
-    '*' // Allow all origins for testing
-  ],
+  origin: true, // Allow all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
@@ -37,6 +29,13 @@ app.options('*', cors());
 // Debug middleware to log CORS requests
 app.use((req, res, next) => {
   console.log(`🔍 ${req.method} ${req.path} from origin: ${req.headers.origin}`);
+  
+  // Set CORS headers manually as backup
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   next();
 });
 
