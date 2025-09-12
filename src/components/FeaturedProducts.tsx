@@ -2,51 +2,77 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Star } from "lucide-react";
-import productCollection from "@/assets/product-collection.jpg";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
+
+// Import actual product images
+import womenImage1 from "@/assets/scrolling-images/women/H1.png.webp";
+import womenImage2 from "@/assets/scrolling-images/women/H2.webp";
+import womenImage3 from "@/assets/scrolling-images/women/K2.webp";
+import womenImage4 from "@/assets/scrolling-images/women/k3.webp";
 
 const FeaturedProducts = () => {
+  const { addToCart } = useCart();
+
+  const handleAddToCart = (product: any) => {
+    // Convert price string to number (remove ₹ and ,)
+    const price = parseInt(product.price.slice(1).replace(',', ''));
+    const originalPrice = parseInt(product.originalPrice.slice(1).replace(',', ''));
+    
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price,
+      originalPrice,
+      image: product.image,
+      badge: product.badge
+    });
+    
+    toast.success(`${product.name} added to cart!`);
+  };
+
   const products = [
     {
       id: 1,
-      name: "Royal Silk Saree",
-      price: "₹12,999",
-      originalPrice: "₹15,999",
+      name: "Handwoven Silk Saree",
+      price: "₹8,999",
+      originalPrice: "₹12,999",
       rating: 4.8,
       reviews: 124,
-      image: productCollection,
+      image: womenImage1,
       badge: "Best Seller",
       badgeColor: "bg-primary text-primary-foreground"
     },
     {
       id: 2,
-      name: "Handwoven Cotton Dupatta",
-      price: "₹2,499",
-      originalPrice: "₹3,299",
+      name: "Traditional Cotton Saree",
+      price: "₹5,499",
+      originalPrice: "₹7,299",
       rating: 4.6,
       reviews: 89,
-      image: productCollection,
+      image: womenImage2,
       badge: "New Arrival",
       badgeColor: "bg-secondary text-secondary-foreground"
     },
     {
       id: 3,
-      name: "Artisan Craft Bag",
-      price: "₹1,899",
-      originalPrice: "₹2,499",
+      name: "Elegant Designer Saree",
+      price: "₹12,899",
+      originalPrice: "₹16,499",
       rating: 4.7,
       reviews: 156,
-      image: productCollection,
+      image: womenImage3,
       badge: "Limited Edition",
       badgeColor: "bg-accent text-accent-foreground"
     },
     {
       id: 4,
-      name: "Traditional Block Print Kurta",
-      price: "₹3,499",
-      originalPrice: "₹4,299",
+      name: "Premium Handloom Saree",
+      price: "₹15,499",
+      originalPrice: "₹19,299",
       rating: 4.9,
       reviews: 203,
-      image: productCollection,
+      image: womenImage4,
       badge: "Trending",
       badgeColor: "bg-coral text-coral-foreground"
     }
@@ -107,6 +133,7 @@ const FeaturedProducts = () => {
                 <Button 
                   className="w-full group-hover:bg-gradient-primary group-hover:text-white transition-smooth" 
                   variant="outline"
+                  onClick={() => handleAddToCart(product)}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Add to Cart

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
 import OrderTracking from "./pages/OrderTracking";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -14,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./hooks/useAuth";
+import { CartProvider } from "./contexts/CartContext";
 import AuthGuard from "./components/auth/AuthGuard";
 import SecurityInfo from "./components/auth/SecurityInfo";
 // Admin imports
@@ -64,6 +66,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <CartProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -92,6 +95,7 @@ const App = () => (
                       <Route path="/" element={<Index />} />
                       <Route path="/products" element={<Products />} />
                       <Route path="/cart" element={<Cart />} />
+                      <Route path="/checkout" element={<Checkout />} />
                       <Route path="/track-order" element={<OrderTracking />} />
                       <Route path="/about" element={<About />} />
                       <Route path="/contact" element={<Contact />} />
@@ -107,6 +111,7 @@ const App = () => (
             } />
           </Routes>
         </BrowserRouter>
+        </CartProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

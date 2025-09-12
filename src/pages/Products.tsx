@@ -4,10 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Search, Filter } from "lucide-react";
+import { Heart, Search, Filter, ShoppingCart } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { addToCart } = useCart();
+
+  const handleAddToCart = (product: any) => {
+    // Convert price string to number (remove ₹ and ,)
+    const price = parseInt(product.price.slice(1).replace(',', ''));
+    const originalPrice = parseInt(product.originalPrice.slice(1).replace(',', ''));
+    
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price,
+      originalPrice,
+      image: product.image,
+      origin: product.origin
+    });
+    
+    toast.success(`${product.name} added to cart!`);
+  };
 
   const products = [
     {
@@ -158,7 +178,10 @@ const Products = () => {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <Button className="flex-1">Add to Cart</Button>
+                  <Button className="flex-1" onClick={() => handleAddToCart(product)}>
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Add to Cart
+                  </Button>
                   <Button variant="outline" size="sm">
                     View Details
                   </Button>

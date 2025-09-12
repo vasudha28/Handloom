@@ -6,13 +6,16 @@ import { ShoppingCart, Heart, User, Menu, Search, LogOut, Settings, Shield, Buil
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 import FloatingAuthModal from "@/components/auth/FloatingAuthModal";
+import logoImage from "@/assets/logo.png";
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup'>('signin');
   const { user, signOut } = useAuth();
+  const { getCartItemsCount } = useCart();
 
   const handleAuthClick = (tab: 'signin' | 'signup') => {
     setAuthModalTab(tab);
@@ -37,16 +40,17 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-soft">
+    <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border shadow-soft">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-full"></div>
-            <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              HandloomPortal
-            </span>
-          </div>
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+              <img 
+                src={logoImage} 
+                alt="HandloomPortal Logo" 
+                className="h-13 w-auto object-contain"
+              />
+            </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -78,9 +82,11 @@ const Navigation = () => {
             <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  3
-                </span>
+                {getCartItemsCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {getCartItemsCount()}
+                  </span>
+                )}
               </Button>
             </Link>
             

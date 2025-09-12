@@ -1,59 +1,17 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingBag, Heart } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useNavigate } from "react-router-dom";
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Handwoven Silk Saree",
-      price: 3500,
-      originalPrice: 4200,
-      quantity: 1,
-      image: "/placeholder.svg",
-      origin: "Kanchipuram",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Cotton Block Print Dupatta",
-      price: 850,
-      originalPrice: 1200,
-      quantity: 2,
-      image: "/placeholder.svg",
-      origin: "Rajasthan",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Handloom Cotton Kurta",
-      price: 1200,
-      originalPrice: 1500,
-      quantity: 1,
-      image: "/placeholder.svg",
-      origin: "West Bengal",
-      inStock: false
-    }
-  ]);
+  const navigate = useNavigate();
+  const { cartItems, updateQuantity, removeFromCart, getCartTotal } = useCart();
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = getCartTotal();
   const shipping = subtotal > 2000 ? 0 : 150;
   const total = subtotal + shipping;
 
@@ -66,7 +24,7 @@ const Cart = () => {
           <p className="text-muted-foreground mb-6">
             Discover our beautiful handloom collection and add items to your cart
           </p>
-          <Button>Continue Shopping</Button>
+          <Button onClick={() => navigate('/products')}>Continue Shopping</Button>
         </div>
       </div>
     );
@@ -105,7 +63,7 @@ const Cart = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeFromCart(item.id)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -199,7 +157,11 @@ const Cart = () => {
                   <span>Total</span>
                   <span className="text-primary">₹{total.toLocaleString()}</span>
                 </div>
-                <Button className="w-full" size="lg">
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={() => navigate('/checkout')}
+                >
                   Proceed to Checkout
                 </Button>
               </CardContent>
