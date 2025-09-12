@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const Razorpay = require('razorpay');
-const crypto = require('crypto');
+const crypto = require('crypto'); // Built-in Node.js module
 
 // Load environment variables
 require('dotenv').config();
@@ -18,14 +18,27 @@ app.use(cors({
   origin: [
     'http://localhost:8080', 
     'http://localhost:3000', 
-    'https://your-vercel-domain.vercel.app',
-    'https://your-frontend-domain.vercel.app', // Add your actual frontend domain
+    'https://handloom1.vercel.app', // Your deployed frontend URL
+    'https://handloom1.vercel.app/', // With trailing slash
+    'https://www.handloom1.vercel.app', // With www
+    'https://www.handloom1.vercel.app/', // With www and trailing slash
     '*' // Allow all origins for testing
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// Debug middleware to log CORS requests
+app.use((req, res, next) => {
+  console.log(`🔍 ${req.method} ${req.path} from origin: ${req.headers.origin}`);
+  next();
+});
 
 // Initialize Razorpay
 console.log('Environment variables:');
