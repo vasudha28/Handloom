@@ -13,6 +13,25 @@ dist-ssr
 *.local
 .env
 
+# Backend specific
+backend/node_modules
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.development
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Test files
+test-*.js
+test-*.cjs
+test-*.html
+setup-backend.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

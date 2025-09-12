@@ -35,7 +35,7 @@ const FeaturedProducts = () => {
     {
       id: 1,
       name: "Handwoven Silk Saree",
-      price: "₹8,999",
+      price: "₹10",
       originalPrice: "₹12,999",
       rating: 4.8,
       reviews: 124,

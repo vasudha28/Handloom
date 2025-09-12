@@ -52,6 +52,7 @@ export default defineConfig(({ mode }) => ({
     force: true
   },
   esbuild: {
+    jsx: 'automatic', // Use automatic JSX runtime
     sourcemap: false, // Disable esbuild source maps
     drop: mode === 'production' ? ['console', 'debugger'] : [], // Remove console.log and debugger in production only
   },
@@ -62,8 +63,6 @@ export default defineConfig(({ mode }) => ({
     global: 'globalThis',
     // Ensure React is available globally
     __DEV__: mode === 'development',
-    // Ensure React is properly defined
-    'React': 'react',
   },
   // Suppress source map warnings in console
   logLevel: 'info',

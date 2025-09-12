@@ -9,8 +9,12 @@ declare global {
 
 export class PaymentService {
   private static instance: PaymentService;
+  private backendUrl: string;
 
-  private constructor() {}
+  private constructor() {
+    // Use environment variable or default to localhost for development
+    this.backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+  }
 
   public static getInstance(): PaymentService {
     if (!PaymentService.instance) {
@@ -35,21 +39,52 @@ export class PaymentService {
     });
   }
 
-  // Generate order ID (in real app, this should come from your backend)
-  private generateOrderId(): string {
-    return 'order_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  // Create payment order via backend API
+  public async createPaymentOrder(amount: number, currency: string = 'INR'): Promise<{ orderId: string; amount: number }> {
+    try {
+      const response = await fetch(`${this.backendUrl}/api/razorpay/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          currency,
+          receipt: `receipt_${Date.now()}`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create order');
+      }
+
+      return {
+        orderId: data.order.id,
+        amount: data.order.amount
+      };
+    } catch (error) {
+      console.error('Error creating payment order:', error);
+      throw new Error('Failed to create payment order. Please try again.');
+    }
   }
 
-  // Create payment order
-  public async createPaymentOrder(amount: number): Promise<{ orderId: string; amount: number }> {
-    // In a real application, you would call your backend API here
-    // to create an order with Razorpay and get the order_id
-    const orderId = this.generateOrderId();
-    
-    return {
-      orderId,
-      amount: amount * 100 // Convert to paise (Razorpay expects amount in smallest currency unit)
-    };
+  // Get Razorpay key from backend
+  public async getRazorpayKey(): Promise<string> {
+    try {
+      const response = await fetch(`${this.backendUrl}/api/razorpay/key`);
+      const data = await response.json();
+      return data.key;
+    } catch (error) {
+      console.error('Error getting Razorpay key:', error);
+      // Fallback to environment variable
+      return RAZORPAY_CONFIG.keyId;
+    }
   }
 
   // Process payment
@@ -65,12 +100,15 @@ export class PaymentService {
         throw new Error('Failed to load Razorpay SDK');
       }
 
-      // Create order
-      const order = await this.createPaymentOrder(paymentDetails.amount);
+      // Get Razorpay key from backend
+      const razorpayKey = await this.getRazorpayKey();
+
+      // Create order via backend
+      const order = await this.createPaymentOrder(paymentDetails.amount, paymentDetails.currency);
 
       // Razorpay options
       const options = {
-        key: RAZORPAY_CONFIG.keyId,
+        key: razorpayKey,
         amount: order.amount,
         currency: paymentDetails.currency,
         name: RAZORPAY_CONFIG.businessName,
@@ -84,14 +122,35 @@ export class PaymentService {
         },
         theme: RAZORPAY_CONFIG.theme,
         method: RAZORPAY_CONFIG.paymentMethods,
-        handler: (response: any) => {
-          // Payment successful
-          onSuccess({
-            ...response,
-            orderId: order.orderId,
-            amount: paymentDetails.amount,
-            status: PaymentStatus.SUCCESS
-          });
+        handler: async (response: any) => {
+          try {
+            // Verify payment with backend
+            const isVerified = await this.verifyPayment(
+              response.razorpay_payment_id,
+              response.razorpay_order_id,
+              response.razorpay_signature
+            );
+            
+            if (isVerified) {
+              onSuccess({
+                ...response,
+                orderId: order.orderId,
+                amount: paymentDetails.amount,
+                status: PaymentStatus.SUCCESS
+              });
+            } else {
+              onFailure({
+                error: 'Payment verification failed',
+                status: PaymentStatus.FAILED
+              });
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            onFailure({
+              error: 'Payment verification failed',
+              status: PaymentStatus.FAILED
+            });
+          }
         },
         modal: {
           ondismiss: () => {
@@ -117,12 +176,31 @@ export class PaymentService {
     }
   }
 
-  // Verify payment (you would implement this on your backend)
+  // Verify payment via backend API
   public async verifyPayment(paymentId: string, orderId: string, signature: string): Promise<boolean> {
-    // In a real application, send these details to your backend for verification
-    // For now, we'll just return true (DO NOT DO THIS IN PRODUCTION)
-    console.log('Payment verification:', { paymentId, orderId, signature });
-    return true;
+    try {
+      const response = await fetch(`${this.backendUrl}/api/razorpay/verify-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          razorpay_payment_id: paymentId,
+          razorpay_order_id: orderId,
+          razorpay_signature: signature
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      return false;
+    }
   }
 
   // Format amount for display

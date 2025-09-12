@@ -43,7 +43,7 @@ const ScrollingSarees = () => {
     {
       id: 1,
       name: "Handwoven Silk Saree",
-      price: "₹18,999",
+      price: "₹10",
       originalPrice: "₹24,999",
       rating: 4.9,
       reviews: 256,
