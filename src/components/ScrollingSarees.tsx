@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Star, ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 

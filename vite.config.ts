@@ -28,16 +28,17 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Group React packages together and load them first
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react-vendor';
+          }
+          if (id.includes('firebase')) {
+            return 'firebase';
+          }
+          if (id.includes('@radix-ui')) {
+            return 'ui';
+          }
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('firebase')) {
-              return 'firebase';
-            }
-            if (id.includes('@radix-ui')) {
-              return 'ui';
-            }
             return 'vendor';
           }
         },
@@ -47,7 +48,8 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     exclude: ['firebase'], // Exclude Firebase from pre-bundling to avoid source map issues
-    include: ['react', 'react-dom', 'react-router-dom'],
+    include: ['react', 'react-dom', 'react-router-dom', 'react/jsx-runtime'],
+    force: true
   },
   esbuild: {
     sourcemap: false, // Disable esbuild source maps
@@ -58,6 +60,8 @@ export default defineConfig(({ mode }) => ({
     'process.env.NODE_ENV': JSON.stringify(mode),
     // Fix React Context issues in production
     global: 'globalThis',
+    // Ensure React is available globally
+    __DEV__: mode === 'development',
   },
   // Suppress source map warnings in console
   logLevel: 'info',
