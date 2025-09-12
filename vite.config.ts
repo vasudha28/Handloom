@@ -24,16 +24,13 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom')) {
-              return 'react';
-            }
-            if (id.includes('@radix-ui')) {
-              return 'ui';
+              return 'react-vendor';
             }
             if (id.includes('firebase')) {
               return 'firebase';
             }
-            if (id.includes('razorpay')) {
-              return 'payment';
+            if (id.includes('@radix-ui')) {
+              return 'ui';
             }
             return 'vendor';
           }
@@ -53,6 +50,8 @@ export default defineConfig(({ mode }) => ({
   define: {
     // Suppress Firebase source map warnings
     'process.env.NODE_ENV': JSON.stringify(mode),
+    // Fix React Context issues in production
+    global: 'globalThis',
   },
   // Suppress source map warnings in console
   logLevel: 'info',
