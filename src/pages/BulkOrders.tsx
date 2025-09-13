@@ -36,13 +36,13 @@ const BulkOrders = () => {
 
   const handleRequestQuote = () => {
     if (!user) {
-      // User not logged in, show sign in modal
-      setAuthModalTab('signin');
-      setAuthModalOpen(true);
-    } else if (user.role !== 'b2b_buyer') {
-      // User logged in but not B2B, show sign up as B2B modal
+      // User not logged in, show sign up modal (since they need B2B account)
       setAuthModalTab('signup');
       setAuthModalOpen(true);
+    } else if (user.role !== 'b2b_buyer') {
+      // User logged in but not B2B, show B2B popup again
+      setAuthModalOpen(false); // Close any open auth modal
+      setShowB2BPopup(true);
     } else {
       // User is B2B buyer, show quote form
       setShowQuoteForm(true);
@@ -50,14 +50,10 @@ const BulkOrders = () => {
   };
 
   const handleAuthClick = (tab: 'signin' | 'signup') => {
-    if (tab === 'signup') {
-      // Redirect to signup page with from parameter
-      navigate('/auth?tab=signup&from=bulk-orders');
-    } else {
-      // Show signin modal
-      setAuthModalTab(tab);
-      setAuthModalOpen(true);
-    }
+    // Close B2B popup and show auth modal
+    setShowB2BPopup(false);
+    setAuthModalTab(tab);
+    setAuthModalOpen(true);
   };
   const orderTypes = [
     {
