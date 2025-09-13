@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-handloom.jpg";
 
 // Women's collection images for left side
@@ -127,9 +128,18 @@ const HeroSection = () => {
               Shop Collection
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <Button variant="outline" size="xl" className="min-w-[200px] bg-background/90 backdrop-blur-sm">
-              Bulk Orders
-            </Button>
+            <div className="relative group">
+              <Link to="/bulk-orders">
+                <Button variant="outline" size="xl" className="min-w-[200px] bg-background/90 backdrop-blur-sm">
+                  Bulk Orders
+                </Button>
+              </Link>
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                Sign up as B2B for bulk orders
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
           </div>
           
           {/* Stats */}

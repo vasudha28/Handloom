@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { firebaseAuthService, auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,18 +11,34 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'signup') {
+      setActiveTab('signup');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate('/');
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // Check if user came from bulk orders page
+        const fromBulkOrders = searchParams.get('from') === 'bulk-orders';
+        if (fromBulkOrders) {
+          navigate('/bulk-orders');
+        } else {
+          navigate('/');
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    return () => unsubscribe();
+  }, [navigate, searchParams]);
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,25 +53,16 @@ export default function Auth() {
     const companyName = formData.get('signup-company') as string;
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: fullName,
-            phone,
-            role,
-            company_name: companyName
-          }
-        }
+      await firebaseAuthService.registerWithEmail(email, password, {
+        fullName,
+        phone,
+        role: role as 'b2b_buyer' | 'customer',
+        companyName: role === 'b2b_buyer' ? companyName : undefined
       });
-
-      if (error) throw error;
 
       toast({
         title: "Account created successfully!",
-        description: "Please check your email to verify your account.",
+        description: "You can now sign in with your credentials.",
       });
     } catch (error: any) {
       toast({
@@ -77,12 +84,7 @@ export default function Auth() {
     const password = formData.get('signin-password') as string;
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      await firebaseAuthService.loginWithEmail(email, password);
 
       toast({
         title: "Signed in successfully!",
@@ -108,7 +110,7 @@ export default function Auth() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>

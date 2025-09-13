@@ -12,11 +12,14 @@ import OrderTracking from "./pages/OrderTracking";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import BulkOrders from "./pages/BulkOrders";
+import Wishlist from "./pages/Wishlist";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./hooks/useAuth";
 import { CartProvider } from "./contexts/CartContext";
+import { WishlistProvider } from "./contexts/WishlistContext";
 import AuthGuard from "./components/auth/AuthGuard";
 import SecurityInfo from "./components/auth/SecurityInfo";
 // Admin imports
@@ -68,6 +71,7 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <CartProvider>
+        <WishlistProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -96,11 +100,13 @@ const App = () => (
                       <Route path="/" element={<Index />} />
                       <Route path="/products" element={<Products />} />
                       <Route path="/cart" element={<Cart />} />
+                      <Route path="/wishlist" element={<Wishlist />} />
                       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/track-order" element={<OrderTracking />} />
                       <Route path="/about" element={<About />} />
                       <Route path="/contact" element={<Contact />} />
                       <Route path="/bulk-orders" element={<BulkOrders />} />
+                      <Route path="/auth" element={<Auth />} />
                       <Route path="/security" element={<SecurityInfo />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
@@ -112,6 +118,7 @@ const App = () => (
             } />
           </Routes>
         </BrowserRouter>
+        </WishlistProvider>
         </CartProvider>
       </AuthProvider>
     </TooltipProvider>

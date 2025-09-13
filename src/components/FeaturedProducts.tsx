@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 
 // Import actual product images
@@ -13,6 +14,7 @@ import womenImage4 from "@/assets/scrolling-images/women/k3.webp";
 
 const FeaturedProducts = () => {
   const { addToCart } = useCart();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const handleAddToCart = (product: any) => {
     // Convert price string to number (remove ₹ and ,)
@@ -29,6 +31,29 @@ const FeaturedProducts = () => {
     });
     
     toast.success(`${product.name} added to cart!`);
+  };
+
+  const handleWishlistToggle = (product: any) => {
+    // Convert price string to number (remove ₹ and ,)
+    const price = parseInt(product.price.slice(1).replace(',', ''));
+    const originalPrice = parseInt(product.originalPrice.slice(1).replace(',', ''));
+    
+    const wishlistItem = {
+      id: product.id,
+      name: product.name,
+      price,
+      originalPrice,
+      image: product.image,
+      category: "Featured"
+    };
+
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+      toast.success(`${product.name} removed from wishlist!`);
+    } else {
+      addToWishlist(wishlistItem);
+      toast.success(`${product.name} added to wishlist!`);
+    }
   };
 
   const products = [
@@ -56,7 +81,7 @@ const FeaturedProducts = () => {
     },
     {
       id: 3,
-      name: "Elegant Designer Saree",
+      name: "kalamkari short kurti",
       price: "₹12,899",
       originalPrice: "₹16,499",
       rating: 4.7,
@@ -67,7 +92,7 @@ const FeaturedProducts = () => {
     },
     {
       id: 4,
-      name: "Premium Handloom Saree",
+      name: "Elegant long kurti",
       price: "₹15,499",
       originalPrice: "₹19,299",
       rating: 4.9,
@@ -105,8 +130,19 @@ const FeaturedProducts = () => {
                   {product.badge}
                 </Badge>
                 <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-smooth">
-                  <Button variant="ghost" size="icon" className="bg-background/90 backdrop-blur-sm hover:bg-background">
-                    <Heart className="w-4 h-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`bg-background/90 backdrop-blur-sm hover:bg-background ${
+                      isInWishlist(product.id) ? 'text-red-500' : 'text-gray-600'
+                    }`}
+                    onClick={() => handleWishlistToggle(product)}
+                  >
+                    <Heart 
+                      className={`w-4 h-4 ${
+                        isInWishlist(product.id) ? 'fill-current' : ''
+                      }`} 
+                    />
                   </Button>
                 </div>
               </div>

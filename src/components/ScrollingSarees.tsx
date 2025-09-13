@@ -68,7 +68,7 @@ const ScrollingSarees = () => {
     },
     {
       id: 3,
-      name: "Elegant Designer Saree",
+      name: "Kalamari Short kurti",
       price: "₹6,999",
       originalPrice: "₹9,999",
       rating: 4.7,
@@ -81,7 +81,7 @@ const ScrollingSarees = () => {
     },
     {
       id: 4,
-      name: "Premium Handloom Saree",
+      name: "Elegant Red Kurti",
       price: "₹8,999",
       originalPrice: "₹12,999",
       rating: 4.6,
