@@ -7,8 +7,8 @@ const crypto = require('crypto'); // Built-in Node.js module
 require('dotenv').config();
 
 // Fallback environment variables if .env doesn't work
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET';
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RGj5ssTaXhQIDY';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '5T935CFBZojHBRvL3pa8beJX';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
