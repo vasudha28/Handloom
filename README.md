@@ -309,25 +309,3 @@ Built with **shadcn/ui** components:
 ### Debug Mode
 Enable debug logging by setting `NODE_ENV=development` in backend environment.
 
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📞 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting section
-- Review the API documentation
-
----
-
-**Built with ❤️ for the handloom community**
