@@ -54,7 +54,7 @@ const razorpay = new Razorpay({
 });
 
 // Connect to MongoDB
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URIs)
 .then(() => {
   console.log('✅ Connected to MongoDB successfully');
 })
