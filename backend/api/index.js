@@ -3,16 +3,16 @@ const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const Product = require('../backend/models/Product');
+const Product = require('../models/Product');
 
 // Load environment variables
 const path = require('path');
-const result = require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+const result = require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Debug dotenv loading
 if (result.error) {
   console.log('⚠️  .env file not found or error loading:', result.error.message);
-  console.log('🔍 Looking for .env in:', path.join(__dirname, '../backend/.env'));
+  console.log('🔍 Looking for .env in:', path.join(__dirname, '../.env'));
   console.log('💡 Create a .env file in the backend directory with your environment variables');
 } else {
   console.log('✅ .env file loaded successfully');
