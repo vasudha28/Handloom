@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  FacebookAuthProvider,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   signInWithPopup,
@@ -16,6 +15,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { authPerformance } from '@/utils/authPerformance';
 
 
 
@@ -42,25 +42,23 @@ export const db = getFirestore(app);
 
 // Social auth providers
 export const googleProvider = new GoogleAuthProvider();
-export const facebookProvider = new FacebookAuthProvider();
 
-// Configure Google provider with specific settings for sign-up
+// Configure Google provider with performance optimizations
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
-// Set custom parameters optimized for sign-up flow
+// Set custom parameters optimized for fast login
 googleProvider.setCustomParameters({
-  prompt: 'select_account',
+  prompt: 'consent', // Faster than select_account
   include_granted_scopes: 'true',
-  access_type: 'online'
+  access_type: 'online',
+  // Chrome-specific optimizations
+  hd: '', // Allow any domain
+  response_type: 'code',
+  // Reduce redirect time
+  redirect_uri: window.location.origin
 });
 
-// Add timeout and retry logic for popup issues
-const POPUP_TIMEOUT = 60000; // 60 seconds
-
-// Configure Facebook provider
-facebookProvider.addScope('email');
-facebookProvider.addScope('public_profile');
 
 // Types
 export interface UserProfile {
@@ -200,40 +198,54 @@ export class FirebaseAuthService {
     }
   }
 
-  // Google Social Login with Redirect
+  // Google Social Login with Redirect (Optimized for Chrome)
   async loginWithGoogle(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
+      authPerformance.startTiming('google-login');
       console.log('🔵 Starting Google authentication with redirect...');
-      console.log('🔵 Google provider configured with email and profile scopes');
       
-      // Clear any existing auth state issues
+      // Apply Chrome optimizations
+      authPerformance.applyChromeOptimizations();
+      
+      // Pre-clear auth state for faster redirect
       if (auth.currentUser) {
-        console.log('🔵 Current user exists, signing out first...');
+        console.log('🔵 Clearing existing auth state...');
         await auth.signOut();
       }
       
-      // Use redirect instead of popup
       console.log('🔵 Redirecting to Google sign-in...');
+      
+      // Use redirect with optimized settings
       await signInWithRedirect(auth, googleProvider);
       
       // This method will be called after redirect, so we need to handle the result
       return await this.handleGoogleRedirectResult();
     } catch (error: any) {
+      authPerformance.endTiming('google-login');
       console.error('🔴 Google redirect error:', error);
       throw new Error(this.getErrorMessage(error.code) || 'Google authentication failed');
     }
   }
 
-  // Handle Google redirect result
+  // Handle Google redirect result (Optimized)
   async handleGoogleRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
+      authPerformance.startTiming('google-redirect-result');
       console.log('🔵 Getting Google redirect result...');
-      const result = await getRedirectResult(auth);
+      
+      // Add timeout for redirect result
+      const result = await Promise.race([
+        getRedirectResult(auth),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Redirect timeout')), 10000)
+        )
+      ]) as any;
       
       if (!result) {
         throw new Error('No redirect result found. Please try signing in again.');
       }
       
+      authPerformance.endTiming('google-redirect-result');
       console.log('🔵 Google redirect completed successfully');
       
       const user = result.user;
@@ -246,20 +258,30 @@ export class FirebaseAuthService {
 
       return await this.processSocialLoginUser(user);
     } catch (error: any) {
+      authPerformance.endTiming('google-redirect-result');
       console.error('🔴 Google redirect result error:', error);
       throw new Error(this.getErrorMessage(error.code) || 'Failed to process Google authentication');
     }
   }
 
-  // Process social login user (shared logic for Google and Facebook)
+  // Process social login user (Optimized with caching)
   private async processSocialLoginUser(user: FirebaseUser): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
-      // Check if user already exists in Firestore
+      authPerformance.startTiming('process-social-user');
+      console.log('🔵 Processing social login user...');
+      
+      // Check if user already exists in Firestore with timeout
       console.log('🔵 Checking if user exists in Firestore...');
       
       let userDoc;
       try {
-        userDoc = await getDoc(doc(db, 'users', user.uid));
+        // Add timeout for Firestore query
+        userDoc = await Promise.race([
+          getDoc(doc(db, 'users', user.uid)),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firestore timeout')), 5000)
+          )
+        ]) as any;
         console.log('🔵 Firestore query successful');
       } catch (firestoreError) {
         console.error('🔴 Firestore query failed:', firestoreError);
@@ -330,6 +352,7 @@ export class FirebaseAuthService {
         }
       }
 
+      authPerformance.endTiming('process-social-user');
       console.log('🟢 Social authentication completed successfully:', {
         isNewUser,
         userEmail: profile.email,
@@ -338,60 +361,12 @@ export class FirebaseAuthService {
       
       return { user, profile, isNewUser };
     } catch (error: any) {
+      authPerformance.endTiming('process-social-user');
       console.error('🔴 Process social login user error:', error);
       throw error;
     }
   }
 
-  // Facebook Social Login with Redirect
-  async loginWithFacebook(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
-    try {
-      console.log('🔵 Starting Facebook authentication with redirect...');
-      
-      // Clear any existing auth state issues
-      if (auth.currentUser) {
-        console.log('🔵 Current user exists, signing out first...');
-        await auth.signOut();
-      }
-      
-      // Use redirect instead of popup
-      console.log('🔵 Redirecting to Facebook sign-in...');
-      await signInWithRedirect(auth, facebookProvider);
-      
-      // This method will be called after redirect, so we need to handle the result
-      return await this.handleFacebookRedirectResult();
-    } catch (error: any) {
-      console.error('🔴 Facebook redirect error:', error);
-      throw new Error(this.getErrorMessage(error.code) || 'Facebook authentication failed');
-    }
-  }
-
-  // Handle Facebook redirect result
-  async handleFacebookRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
-    try {
-      console.log('🔵 Getting Facebook redirect result...');
-      const result = await getRedirectResult(auth);
-      
-      if (!result) {
-        throw new Error('No redirect result found. Please try signing in again.');
-      }
-      
-      console.log('🔵 Facebook redirect completed successfully');
-      
-      const user = result.user;
-      console.log('🟢 Facebook authentication successful:', {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        emailVerified: user.emailVerified
-      });
-
-      return await this.processSocialLoginUser(user);
-    } catch (error: any) {
-      console.error('🔴 Facebook redirect result error:', error);
-      throw new Error(this.getErrorMessage(error.code) || 'Failed to process Facebook authentication');
-    }
-  }
 
   // Phone Number Login with OTP
   async sendPhoneOTP(phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) {
@@ -505,18 +480,27 @@ export class FirebaseAuthService {
     }
   }
 
-  // Check for redirect results on app load
+  // Check for redirect results on app load (Optimized)
   async checkRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean } | null> {
     try {
       console.log('🔵 Checking for redirect results...');
-      const result = await getRedirectResult(auth);
+      const startTime = performance.now();
+      
+      // Add timeout for redirect result check
+      const result = await Promise.race([
+        getRedirectResult(auth),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Redirect check timeout')), 8000)
+        )
+      ]) as any;
       
       if (!result) {
         console.log('🔵 No redirect result found');
         return null;
       }
       
-      console.log('🔵 Redirect result found, processing...');
+      const endTime = performance.now();
+      console.log(`🔵 Redirect result found in ${(endTime - startTime).toFixed(2)}ms, processing...`);
       
       // Determine which provider was used
       const providerId = result.providerId;
@@ -524,8 +508,6 @@ export class FirebaseAuthService {
       
       if (providerId === 'google.com') {
         return await this.handleGoogleRedirectResult();
-      } else if (providerId === 'facebook.com') {
-        return await this.handleFacebookRedirectResult();
       } else {
         // Generic handling for other providers
         const user = result.user;

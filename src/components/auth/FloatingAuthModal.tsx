@@ -101,7 +101,6 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
     login, 
     register, 
     loginWithGoogle,
-    loginWithFacebook,
     loginWithPhone, 
     verifyPhoneOTP, 
     forgotPassword,
@@ -111,6 +110,7 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
 
   // State management
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [authStep, setAuthStep] = useState<AuthStep>('auth');
   const [currentTab, setCurrentTab] = useState(defaultTab);
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
@@ -397,29 +397,39 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
     }
   };
 
-  // Social login
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+  // Google login
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
     
     try {
-      console.log(`Modal: Starting ${provider} authentication with redirect...`);
+      console.log('Modal: Starting Google authentication with redirect...');
+      
+      // Show loading state
+      toast({
+        title: "Redirecting to Google...",
+        description: "Please wait while we redirect you to sign in.",
+        duration: 3000,
+      });
       
       // This will redirect the user, so we don't wait for a result
-      if (provider === 'google') {
-        await loginWithGoogle();
-      } else if (provider === 'facebook') {
-        await loginWithFacebook();
-      }
+      await loginWithGoogle();
       
       // The user will be redirected, so we don't need to handle the result here
       // The result will be processed by the redirect result checker in useAuth
       
     } catch (error: any) {
-      console.error(`Modal: ${provider} authentication error:`, error);
+      console.error('Modal: Google authentication error:', error);
       
-      setError(error.message || `${provider} authentication failed`);
+      setError(error.message || 'Google authentication failed');
       setLoading(false);
+      
+      // Show error toast
+      toast({
+        variant: "destructive",
+        title: "Google Sign-in Failed",
+        description: error.message || "Please try again.",
+      });
     }
   };
 
@@ -731,11 +741,11 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="w-full">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => handleSocialLogin('google')}
+                      onClick={handleGoogleLogin}
                       disabled={loading}
                       className="w-full"
                     >
@@ -758,19 +768,6 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
                         />
                       </svg>
                       {currentTab === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSocialLogin('facebook')}
-                      disabled={loading}
-                      className="w-full"
-                    >
-                      <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                      Facebook
                     </Button>
                   </div>
                 </div>
@@ -829,7 +826,7 @@ export default function FloatingAuthModal({ isOpen, onClose, defaultTab = 'signi
 
                       <Button
                         type="button"
-                        onClick={() => handleSocialLogin('google')}
+                        onClick={handleGoogleLogin}
                         disabled={loading}
                         className="w-full"
                         size="lg"

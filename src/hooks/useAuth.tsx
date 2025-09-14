@@ -32,7 +32,6 @@ interface AuthContextType {
   loginWithEmail: (email: string, password: string) => Promise<{ user: any; profile: UserProfile }>;
   register: (data: RegisterData) => Promise<void>;
   loginWithGoogle: () => Promise<{ user: any; profile: UserProfile; isNewUser: boolean }>;
-  loginWithFacebook: () => Promise<{ user: any; profile: UserProfile; isNewUser: boolean }>;
   loginWithPhone: (phone: string) => Promise<any>; // Returns confirmation result
   verifyPhoneOTP: (confirmationResult: any, otp: string, userData?: Partial<UserProfile>) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -60,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // First check for redirect results
+        // First check for redirect results with loading feedback
         console.log('🔵 Initializing auth, checking for redirect results...');
         const redirectResult = await firebaseAuthService.checkRedirectResult();
         
@@ -71,16 +70,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const localUser = mapFirebaseUserToUser(profile);
           setUser(localUser);
           
-          // Show appropriate toast message
+          // Show appropriate toast message with success styling
           if (isNewUser) {
             toast({
               title: "Welcome to Handloom Portal!",
               description: `Account created successfully for ${profile.fullName}`,
+              duration: 4000,
             });
           } else {
             toast({
               title: "Welcome back!",
               description: `Signed in as ${profile.fullName}`,
+              duration: 3000,
             });
           }
           
@@ -89,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('🔴 Error checking redirect result:', error);
+        // Don't show error toast for redirect check failures
       }
       
       // Set up auth state listener
@@ -127,12 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return unsubscribe;
     };
 
-    const unsubscribe = initializeAuth();
+    initializeAuth();
     
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
+      // Cleanup handled by the unsubscribe from onAuthStateChanged
     };
   }, [toast]);
 
@@ -204,21 +204,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithFacebook = async () => {
-    try {
-      console.log('Auth hook: Starting Facebook login with redirect...');
-      
-      // This will redirect the user to Facebook, so we don't wait for a result here
-      // The result will be handled by the redirect result checker in useEffect
-      await firebaseAuthService.loginWithFacebook();
-      
-      // This won't be reached due to redirect, but we need to return something
-      return { user: null, profile: null, isNewUser: false };
-    } catch (error: any) {
-      console.error('Auth hook: Facebook login error', error);
-      throw new Error(error.message || 'Facebook login failed');
-    }
-  };
 
   const initializeRecaptcha = (containerId: string) => {
     return firebaseAuthService.initializeRecaptcha(containerId);
@@ -301,7 +286,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithEmail,
     register,
     loginWithGoogle,
-    loginWithFacebook,
     loginWithPhone,
     verifyPhoneOTP,
     forgotPassword,
