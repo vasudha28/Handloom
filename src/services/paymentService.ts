@@ -13,7 +13,7 @@ export class PaymentService {
 
   private constructor() {
     // Use environment variable or default to localhost for development
-    this.backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    this.backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001');
   }
 
   public static getInstance(): PaymentService {
