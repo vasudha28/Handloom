@@ -58,40 +58,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Firebase auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      console.log('Auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
+    const initializeAuth = async () => {
       try {
-        if (firebaseUser) {
-          // User is signed in
-          console.log('Firebase user:', firebaseUser);
-          const profile = await firebaseAuthService.getUserProfile(firebaseUser.uid);
-          console.log('User profile from Firestore:', profile);
+        // First check for redirect results
+        console.log('🔵 Initializing auth, checking for redirect results...');
+        const redirectResult = await firebaseAuthService.checkRedirectResult();
+        
+        if (redirectResult) {
+          console.log('🔵 Redirect result found, processing...');
+          const { user: firebaseUser, profile, isNewUser } = redirectResult;
           
-          if (profile) {
-            const localUser = mapFirebaseUserToUser(profile);
-            console.log('Setting user state:', localUser);
-            setUser(localUser);
+          const localUser = mapFirebaseUserToUser(profile);
+          setUser(localUser);
+          
+          // Show appropriate toast message
+          if (isNewUser) {
+            toast({
+              title: "Welcome to Handloom Portal!",
+              description: `Account created successfully for ${profile.fullName}`,
+            });
           } else {
-            console.log('Profile not found in Firestore, signing out...');
-            // Profile not found, sign out
-            await firebaseAuthService.logout();
-            setUser(null);
+            toast({
+              title: "Welcome back!",
+              description: `Signed in as ${profile.fullName}`,
+            });
           }
-        } else {
-          // User is signed out
-          console.log('User signed out, clearing state');
-          setUser(null);
+          
+          setLoading(false);
+          return;
         }
       } catch (error) {
-        console.error('Auth state change error:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
+        console.error('🔴 Error checking redirect result:', error);
       }
-    });
+      
+      // Set up auth state listener
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+        console.log('Auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
+        try {
+          if (firebaseUser) {
+            // User is signed in
+            console.log('Firebase user:', firebaseUser);
+            const profile = await firebaseAuthService.getUserProfile(firebaseUser.uid);
+            console.log('User profile from Firestore:', profile);
+            
+            if (profile) {
+              const localUser = mapFirebaseUserToUser(profile);
+              console.log('Setting user state:', localUser);
+              setUser(localUser);
+            } else {
+              console.log('Profile not found in Firestore, signing out...');
+              // Profile not found, sign out
+              await firebaseAuthService.logout();
+              setUser(null);
+            }
+          } else {
+            // User is signed out
+            console.log('User signed out, clearing state');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      });
 
-    return () => unsubscribe();
-  }, []);
+      return unsubscribe;
+    };
+
+    const unsubscribe = initializeAuth();
+    
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [toast]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -147,19 +190,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
-      console.log('Auth hook: Starting Google login...');
-      const { user: firebaseUser, profile, isNewUser } = await firebaseAuthService.loginWithGoogle();
+      console.log('Auth hook: Starting Google login with redirect...');
       
-      console.log('Auth hook: Google login successful', { firebaseUser, profile, isNewUser });
+      // This will redirect the user to Google, so we don't wait for a result here
+      // The result will be handled by the redirect result checker in useEffect
+      await firebaseAuthService.loginWithGoogle();
       
-      // Convert Firebase profile to local User format
-      const localUser = mapFirebaseUserToUser(profile);
-      console.log('Auth hook: Setting user state', localUser);
-      
-      setUser(localUser);
-      
-      // Return the result so the UI can handle signup vs signin
-      return { user: firebaseUser, profile, isNewUser };
+      // This won't be reached due to redirect, but we need to return something
+      return { user: null, profile: null, isNewUser: false };
     } catch (error: any) {
       console.error('Auth hook: Google login error', error);
       throw new Error(error.message || 'Google login failed');
@@ -168,12 +206,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithFacebook = async () => {
     try {
-      const { user: firebaseUser, profile, isNewUser } = await firebaseAuthService.loginWithFacebook();
-      setUser(mapFirebaseUserToUser(profile));
+      console.log('Auth hook: Starting Facebook login with redirect...');
       
-      // Return the result so the UI can handle signup vs signin
-      return { user: firebaseUser, profile, isNewUser };
+      // This will redirect the user to Facebook, so we don't wait for a result here
+      // The result will be handled by the redirect result checker in useEffect
+      await firebaseAuthService.loginWithFacebook();
+      
+      // This won't be reached due to redirect, but we need to return something
+      return { user: null, profile: null, isNewUser: false };
     } catch (error: any) {
+      console.error('Auth hook: Facebook login error', error);
       throw new Error(error.message || 'Facebook login failed');
     }
   };

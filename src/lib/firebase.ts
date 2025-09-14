@@ -6,6 +6,8 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -198,10 +200,10 @@ export class FirebaseAuthService {
     }
   }
 
-  // Google Social Login
+  // Google Social Login with Redirect
   async loginWithGoogle(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
-      console.log('🔵 Starting Google authentication...');
+      console.log('🔵 Starting Google authentication with redirect...');
       console.log('🔵 Google provider configured with email and profile scopes');
       
       // Clear any existing auth state issues
@@ -210,30 +212,29 @@ export class FirebaseAuthService {
         await auth.signOut();
       }
       
-      // Set up proper error handling for popup issues
-      let result;
-      try {
-        console.log('🔵 Opening Google sign-in popup...');
-        result = await signInWithPopup(auth, googleProvider);
-        console.log('🔵 Google popup completed successfully');
-      } catch (popupError: any) {
-        console.error('🔴 Google popup error:', popupError);
-        
-        // Handle popup-specific errors gracefully
-        if (popupError.code === 'auth/popup-closed-by-user') {
-          throw new Error('Sign-in was cancelled. Please try again.');
-        } else if (popupError.code === 'auth/popup-blocked') {
-          throw new Error('Pop-up was blocked. Please allow pop-ups for this site and try again.');
-        } else if (popupError.code === 'auth/cancelled-popup-request') {
-          throw new Error('Sign-in was cancelled. Please try again.');
-        } else if (popupError.code === 'auth/network-request-failed') {
-          throw new Error('Network error. Please check your internet connection and try again.');
-        } else if (popupError.code === 'auth/operation-not-allowed') {
-          throw new Error('Google sign-in is not enabled. Please contact support.');
-        }
-        // Re-throw other errors with more context
-        throw new Error(`Google authentication failed: ${popupError.message}`);
+      // Use redirect instead of popup
+      console.log('🔵 Redirecting to Google sign-in...');
+      await signInWithRedirect(auth, googleProvider);
+      
+      // This method will be called after redirect, so we need to handle the result
+      return await this.handleGoogleRedirectResult();
+    } catch (error: any) {
+      console.error('🔴 Google redirect error:', error);
+      throw new Error(this.getErrorMessage(error.code) || 'Google authentication failed');
+    }
+  }
+
+  // Handle Google redirect result
+  async handleGoogleRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
+    try {
+      console.log('🔵 Getting Google redirect result...');
+      const result = await getRedirectResult(auth);
+      
+      if (!result) {
+        throw new Error('No redirect result found. Please try signing in again.');
       }
+      
+      console.log('🔵 Google redirect completed successfully');
       
       const user = result.user;
       console.log('🟢 Google authentication successful:', {
@@ -243,6 +244,16 @@ export class FirebaseAuthService {
         emailVerified: user.emailVerified
       });
 
+      return await this.processSocialLoginUser(user);
+    } catch (error: any) {
+      console.error('🔴 Google redirect result error:', error);
+      throw new Error(this.getErrorMessage(error.code) || 'Failed to process Google authentication');
+    }
+  }
+
+  // Process social login user (shared logic for Google and Facebook)
+  private async processSocialLoginUser(user: FirebaseUser): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
+    try {
       // Check if user already exists in Firestore
       console.log('🔵 Checking if user exists in Firestore...');
       
@@ -265,7 +276,7 @@ export class FirebaseAuthService {
         
         // Validate required user data
         if (!user.email) {
-          throw new Error('Google account must have an email address.');
+          throw new Error('Account must have an email address.');
         }
         
         profile = {
@@ -319,7 +330,7 @@ export class FirebaseAuthService {
         }
       }
 
-      console.log('🟢 Google authentication completed successfully:', {
+      console.log('🟢 Social authentication completed successfully:', {
         isNewUser,
         userEmail: profile.email,
         userRole: profile.role
@@ -327,64 +338,58 @@ export class FirebaseAuthService {
       
       return { user, profile, isNewUser };
     } catch (error: any) {
-      console.error('🔴 Google authentication error:', error);
-      console.error('🔴 Error code:', error.code);
-      console.error('🔴 Error message:', error.message);
-      
-      // Provide specific error messages for Google sign-up issues
-      if (error.code) {
-        throw new Error(this.getErrorMessage(error.code));
-      } else {
-        // For custom errors we threw above
-        throw error;
-      }
+      console.error('🔴 Process social login user error:', error);
+      throw error;
     }
   }
 
-  // Facebook Social Login
+  // Facebook Social Login with Redirect
   async loginWithFacebook(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
     try {
-      const result = await signInWithPopup(auth, facebookProvider);
-      const user = result.user;
-
-      // Check if user already exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      let profile: UserProfile;
-      let isNewUser = false;
-
-      if (!userDoc.exists()) {
-        // New user - create profile
-        isNewUser = true;
-        profile = {
-          uid: user.uid,
-          email: user.email!,
-          fullName: user.displayName || '',
-          phone: user.phoneNumber || null,
-          role: 'customer',
-          avatar: user.photoURL || null,
-          accessCodes: [],
-          isEmailVerified: user.emailVerified,
-          isPhoneVerified: !!user.phoneNumber,
-          lastLogin: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        await setDoc(doc(db, 'users', user.uid), profile);
-      } else {
-        // Existing user - update last login
-        profile = userDoc.data() as UserProfile;
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastLogin: new Date(),
-          updatedAt: new Date(),
-          avatar: user.photoURL || profile.avatar
-        });
-        profile.lastLogin = new Date();
+      console.log('🔵 Starting Facebook authentication with redirect...');
+      
+      // Clear any existing auth state issues
+      if (auth.currentUser) {
+        console.log('🔵 Current user exists, signing out first...');
+        await auth.signOut();
       }
-
-      return { user, profile, isNewUser };
+      
+      // Use redirect instead of popup
+      console.log('🔵 Redirecting to Facebook sign-in...');
+      await signInWithRedirect(auth, facebookProvider);
+      
+      // This method will be called after redirect, so we need to handle the result
+      return await this.handleFacebookRedirectResult();
     } catch (error: any) {
-      throw new Error(this.getErrorMessage(error.code));
+      console.error('🔴 Facebook redirect error:', error);
+      throw new Error(this.getErrorMessage(error.code) || 'Facebook authentication failed');
+    }
+  }
+
+  // Handle Facebook redirect result
+  async handleFacebookRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean }> {
+    try {
+      console.log('🔵 Getting Facebook redirect result...');
+      const result = await getRedirectResult(auth);
+      
+      if (!result) {
+        throw new Error('No redirect result found. Please try signing in again.');
+      }
+      
+      console.log('🔵 Facebook redirect completed successfully');
+      
+      const user = result.user;
+      console.log('🟢 Facebook authentication successful:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        emailVerified: user.emailVerified
+      });
+
+      return await this.processSocialLoginUser(user);
+    } catch (error: any) {
+      console.error('🔴 Facebook redirect result error:', error);
+      throw new Error(this.getErrorMessage(error.code) || 'Failed to process Facebook authentication');
     }
   }
 
@@ -497,6 +502,38 @@ export class FirebaseAuthService {
       });
     } catch (error: any) {
       throw new Error('Failed to update profile');
+    }
+  }
+
+  // Check for redirect results on app load
+  async checkRedirectResult(): Promise<{ user: FirebaseUser; profile: UserProfile; isNewUser: boolean } | null> {
+    try {
+      console.log('🔵 Checking for redirect results...');
+      const result = await getRedirectResult(auth);
+      
+      if (!result) {
+        console.log('🔵 No redirect result found');
+        return null;
+      }
+      
+      console.log('🔵 Redirect result found, processing...');
+      
+      // Determine which provider was used
+      const providerId = result.providerId;
+      console.log('🔵 Provider used:', providerId);
+      
+      if (providerId === 'google.com') {
+        return await this.handleGoogleRedirectResult();
+      } else if (providerId === 'facebook.com') {
+        return await this.handleFacebookRedirectResult();
+      } else {
+        // Generic handling for other providers
+        const user = result.user;
+        return await this.processSocialLoginUser(user);
+      }
+    } catch (error: any) {
+      console.error('🔴 Check redirect result error:', error);
+      return null;
     }
   }
 
