@@ -1,7 +1,17 @@
 {
   "version": 2,
   "name": "handloom-portal",
-  "rewrites": [
+  "builds": [
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/server.js"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
