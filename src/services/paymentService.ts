@@ -74,18 +74,8 @@ export class PaymentService {
     }
   }
 
-  // Get Razorpay key from backend
-  public async getRazorpayKey(): Promise<string> {
-    try {
-      const response = await fetch(`${this.backendUrl}/api/razorpay/key`);
-      const data = await response.json();
-      return data.key;
-    } catch (error) {
-      console.error('Error getting Razorpay key:', error);
-      // Fallback to environment variable
-      return RAZORPAY_CONFIG.keyId;
-    }
-  }
+  // Get Razorpay key method removed to prevent MongoDB connection issues
+  // Will use direct fallback to environment variable
 
   // Process payment
   public async processPayment(
@@ -100,8 +90,8 @@ export class PaymentService {
         throw new Error('Failed to load Razorpay SDK');
       }
 
-      // Get Razorpay key from backend
-      const razorpayKey = await this.getRazorpayKey();
+      // Use Razorpay key from environment variable directly to avoid GET request
+      const razorpayKey = RAZORPAY_CONFIG.keyId;
 
       // Create order via backend
       const order = await this.createPaymentOrder(paymentDetails.amount, paymentDetails.currency);

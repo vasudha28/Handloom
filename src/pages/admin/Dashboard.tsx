@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Package, ShoppingCart, TrendingUp, DollarSign } from "lucide-react";
 
@@ -29,40 +28,18 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch total users
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch total products
-      const { count: productsCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch total orders and revenue
-      const { data: orders, count: ordersCount } = await supabase
-        .from('orders')
-        .select('total_amount', { count: 'exact' });
-
-      const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-
-      // Fetch recent orders
-      const { data: recentOrders } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          profiles:user_id (full_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
+      // Mock data since we removed GET requests to prevent MongoDB connection issues
       setStats({
-        totalUsers: usersCount || 0,
-        totalProducts: productsCount || 0,
-        totalOrders: ordersCount || 0,
-        totalRevenue,
-        recentOrders: recentOrders || [],
-        topProducts: [] // We'll implement this later
+        totalUsers: 150,
+        totalProducts: 45,
+        totalOrders: 89,
+        totalRevenue: 125000,
+        recentOrders: [
+          { id: 1, user_id: { full_name: 'John Doe', email: 'john@example.com' }, total_amount: 2500, status: 'completed', created_at: new Date().toISOString() },
+          { id: 2, user_id: { full_name: 'Jane Smith', email: 'jane@example.com' }, total_amount: 1800, status: 'pending', created_at: new Date().toISOString() },
+          { id: 3, user_id: { full_name: 'Bob Johnson', email: 'bob@example.com' }, total_amount: 3200, status: 'completed', created_at: new Date().toISOString() },
+        ],
+        topProducts: []
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

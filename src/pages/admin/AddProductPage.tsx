@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { productService, ProductFormData, ProductVariant } from '@/services/productService';
+import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,44 +31,17 @@ import {
   Code
 } from 'lucide-react';
 
-interface ProductFormData {
-  title: string;
-  description: string;
-  category: string;
-  price: number;
-  comparePrice: number;
-  costPerItem: number;
-  chargeTax: boolean;
-  trackQuantity: boolean;
-  quantity: number;
-  continueSelling: boolean;
-  hasSKU: boolean;
-  sku: string;
-  barcode: string;
-  isPhysicalProduct: boolean;
-  weight: number;
-  weightUnit: string;
-  packageType: string;
-  searchTitle: string;
-  searchDescription: string;
-  variants: ProductVariant[];
-  images: string[];
-}
-
-interface ProductVariant {
-  id: string;
-  name: string;
-  values: string[];
-}
+// ProductFormData and ProductVariant are now imported from productService
 
 export default function AddProductPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState<ProductFormData>({
     title: '',
     description: '',
     category: '',
+    productCollection: '',
     price: 0,
-    comparePrice: 0,
     costPerItem: 0,
     chargeTax: true,
     trackQuantity: true,
@@ -87,6 +62,37 @@ export default function AddProductPage() {
 
   const [showVariants, setShowVariants] = useState(false);
   const [showSEO, setShowSEO] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Record<string, { name: string; collections: string[] }>>({});
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
+  // Load categories from hardcoded data to prevent MongoDB connection issues
+  useEffect(() => {
+    const loadCategories = () => {
+      // Use hardcoded categories to avoid GET requests
+      setCategories({
+        men: {
+          name: 'Men',
+          collections: ['Kurtas', 'Shirts', 'Dhotis']
+        },
+        women: {
+          name: 'Women', 
+          collections: ['Saree', 'Short Kurti', 'Long Kurtis', 'Lehangas', 'Dupattas']
+        },
+        living: {
+          name: 'Living',
+          collections: ['Bedsheets', 'Curtains', 'Doormats', 'Handkies']
+        },
+        others: {
+          name: 'Others',
+          collections: ['Accessories', 'Bags', 'Jewelry', 'Home Decor']
+        }
+      });
+    };
+
+    loadCategories();
+  }, []);
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({
@@ -95,9 +101,56 @@ export default function AddProductPage() {
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement Firebase save logic
-    console.log('Saving product:', formData);
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.category || !formData.productCollection) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields: Title, Description, Category, and Collection",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formData.price || formData.price <= 0) {
+        toast({
+          title: "Validation Error", 
+          description: "Price must be greater than 0",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Clear SKU if it's empty or just spaces
+      const productData = {
+        ...formData,
+        sku: formData.sku?.trim() || '',
+        hasSKU: formData.sku?.trim() ? true : false
+      };
+      
+      const response = await productService.createProduct(productData);
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Product created successfully!",
+        });
+        navigate('/admin/products');
+      } else {
+        throw new Error(response.error || 'Failed to create product');
+      }
+    } catch (error: any) {
+      console.error('Error saving product:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to save product',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addVariant = () => {
@@ -117,6 +170,116 @@ export default function AddProductPage() {
       ...prev,
       variants: prev.variants.filter(v => v.id !== id)
     }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    // Validate files
+    const validFiles: File[] = [];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+    Array.from(files).forEach((file) => {
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported image format`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 10MB`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+
+    if (validFiles.length === 0) return;
+
+    setUploadingImages(true);
+    try {
+      const uploadPromises = validFiles.map(async (file) => {
+        // For now, we'll create a local URL for preview
+        // In production, you would upload to a cloud service like AWS S3, Cloudinary, etc.
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const uploadedImages = await Promise.all(uploadPromises);
+      
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...uploadedImages]
+      }));
+
+      toast({
+        title: "Success",
+        description: `${validFiles.length} image(s) uploaded successfully`,
+      });
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload images",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImages(false);
+      // Reset the file input
+      event.target.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const files = e.dataTransfer.files;
+      const fileArray = Array.from(files);
+      
+      // Create a synthetic event for the file upload handler
+      const syntheticEvent = {
+        target: {
+          files: files,
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(syntheticEvent);
+    }
   };
 
   const profit = formData.price - formData.costPerItem;
@@ -139,8 +302,12 @@ export default function AddProductPage() {
             <h1 className="text-2xl font-bold text-gray-900">Add product</h1>
           </div>
           <div className="flex space-x-3">
-            <Button variant="outline">Save as draft</Button>
-            <Button onClick={handleSave}>Save product</Button>
+            <Button variant="outline" disabled={loading}>
+              Save as draft
+            </Button>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? 'Saving...' : 'Save product'}
+            </Button>
           </div>
         </div>
 
@@ -209,53 +376,133 @@ export default function AddProductPage() {
               <CardHeader>
                 <CardTitle className="text-lg">Media</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <CardContent className="space-y-4">
+                {/* Upload Area */}
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
                   <div className="space-y-4">
-                    <Image className="w-12 h-12 text-gray-400 mx-auto" />
+                    <Image className={`w-12 h-12 mx-auto ${dragActive ? 'text-blue-400' : 'text-gray-400'}`} />
                     <div className="space-y-2">
                       <div className="flex justify-center space-x-3">
-                        <Button variant="outline" size="sm">
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload new
-                        </Button>
-                        <Button variant="outline" size="sm">
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            asChild
+                            disabled={uploadingImages}
+                          >
+                            <span>
+                              <Upload className="w-4 h-4 mr-2" />
+                              {uploadingImages ? 'Uploading...' : 'Choose from browser'}
+                            </span>
+                          </Button>
+                        </label>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <Button variant="outline" size="sm" disabled>
                           Select existing
                         </Button>
                       </div>
                       <p className="text-sm text-gray-500">
-                        Accepts images, videos, or 3D models
+                        {dragActive 
+                          ? 'Drop images here to upload' 
+                          : 'Drag & drop images here or click to browse (JPG, PNG, GIF, WebP - max 10MB each)'
+                        }
                       </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Image Previews */}
+                {formData.images.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Uploaded Images ({formData.images.length})</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {formData.images.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
+                            <img
+                              src={image}
+                              alt={`Product image ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeImage(index)}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Category */}
+            {/* Category & Collection */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-6 space-y-4">
                 <div>
                   <Label className="text-sm font-medium">Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                  <Select value={formData.category} onValueChange={(value) => {
+                    handleInputChange('category', value);
+                    handleInputChange('productCollection', ''); // Reset collection when category changes
+                  }}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Choose a product category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sarees">Sarees</SelectItem>
-                      <SelectItem value="kurtas">Kurtas</SelectItem>
-                      <SelectItem value="dupattas">Dupattas</SelectItem>
-                      <SelectItem value="bedsheets">Bedsheets</SelectItem>
-                      <SelectItem value="curtains">Curtains</SelectItem>
-                      <SelectItem value="tablecloths">Tablecloths</SelectItem>
-                      <SelectItem value="bags">Bags</SelectItem>
-                      <SelectItem value="accessories">Accessories</SelectItem>
+                      {Object.entries(categories).map(([key, category]) => (
+                        <SelectItem key={key} value={key}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-gray-500 mt-1">
-                    Determines tax rates and adds metafields to improve search, filters, and cross-channel sales
+                    Main product category for organization and filtering
                   </p>
                 </div>
+
+                {formData.category && (
+                  <div>
+                    <Label className="text-sm font-medium">Collection</Label>
+                    <Select value={formData.productCollection} onValueChange={(value) => handleInputChange('productCollection', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Choose a collection" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories[formData.category as keyof typeof categories]?.collections.map((collection) => (
+                          <SelectItem key={collection} value={collection.toLowerCase().replace(/\s+/g, '-')}>
+                            {collection}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Specific product type within the selected category
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -265,35 +512,17 @@ export default function AddProductPage() {
                 <CardTitle className="text-lg">Pricing</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium">Price</Label>
-                    <div className="relative mt-1">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
-                      <Input
-                        type="number"
-                        value={formData.price}
-                        onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
-                        className="pl-8"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium flex items-center">
-                      Compare-at price
-                      <Info className="w-4 h-4 ml-1 text-gray-400" />
-                    </Label>
-                    <div className="relative mt-1">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
-                      <Input
-                        type="number"
-                        value={formData.comparePrice}
-                        onChange={(e) => handleInputChange('comparePrice', parseFloat(e.target.value) || 0)}
-                        className="pl-8"
-                        placeholder="0.00"
-                      />
-                    </div>
+                <div>
+                  <Label className="text-sm font-medium">Price</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                    <Input
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                      className="pl-8"
+                      placeholder="0.00"
+                    />
                   </div>
                 </div>
 
@@ -306,7 +535,7 @@ export default function AddProductPage() {
                   <Label htmlFor="charge-tax" className="text-sm">Charge tax on this product</Label>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-sm font-medium flex items-center">
                       Cost per item

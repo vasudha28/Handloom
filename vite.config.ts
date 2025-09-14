@@ -3,11 +3,26 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
+// Plugin to add COOP headers
+function coopHeaders() {
+  return {
+    name: 'coop-headers',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+        next();
+      });
+    }
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost",
-    port: 8080,
+    host: true, // Allow external connections
+    port: 8000,
+    strictPort: false, // Allow fallback to other ports if 8000 is busy
     cors: {
       origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -15,7 +30,7 @@ export default defineConfig(({ mode }) => ({
       credentials: true
     }
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), coopHeaders(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
