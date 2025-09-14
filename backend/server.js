@@ -114,7 +114,7 @@ async function connectToMongoDB() {
       socketTimeoutMS: 45000,
       maxPoolSize: 10,
       minPoolSize: 1,
-      bufferCommands: false,
+   
       // OpenSSL 3.0 compatibility - simplified TLS options
       tls: true,
       tlsAllowInvalidCertificates: false,
