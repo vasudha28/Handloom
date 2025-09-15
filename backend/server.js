@@ -19,10 +19,10 @@ if (result.error) {
 }
 
 // Environment variables with fallbacks - FIXED MONGODB_URI
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RGj5ssTaXhQIDY';
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '5T935CFBZojHBRvL3pa8beJX';
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 // FIXED: Changed to mongodb+srv and removed ssl=true
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://vasudhaoffsetprinters:Vasudha@cluster0.d1gijic.mongodb.net/handloom_portal?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 // Debug environment variables
 console.log('\n🔍 Environment Variables Debug:');
